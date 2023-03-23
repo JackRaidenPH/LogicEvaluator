@@ -5,6 +5,7 @@ target/
 
 ### IntelliJ IDEA ###
 .idea
+LogicEvaluator.iml
 
 ### Eclipse ###
 .apt_generated
