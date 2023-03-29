@@ -1,24 +1,39 @@
 package dev.jackraidenph.logicevaluator.logic;
 
 import dev.jackraidenph.logicevaluator.utility.ProcessingSequence;
+import javafx.util.Pair;
 
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class TruthTable {
-    private final List<List<Boolean>> contents = new ArrayList<>();
-    private final List<String> operands = new ArrayList<>();
-    private final List<List<String>> bufferedPDNF = new ArrayList<>();
-    private final List<List<String>> bufferedPCNF = new ArrayList<>();
-    private final List<List<String>> bufferedPDNFPrimes = new ArrayList<>();
-    private final List<List<String>> bufferedPCNFPrimes = new ArrayList<>();
+    private final List<List<Boolean>>/*                      */contents = new ArrayList<>();
+    private final List<String>/*                             */bufferedOperands = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedPDNF = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedPCNF = new ArrayList<>();
+    private final List<Pair<List<String>, List<Integer>>>/*  */bufferedPDNFPrimes = new ArrayList<>();
+    private final List<Pair<List<String>, List<Integer>>>/*  */bufferedPCNFPrimes = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedCalculativeFDNF = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedCalculativeFCNF = new ArrayList<>();
+
+    private final StringBuilder/*                            */bufferedExpression = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringPDNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringPCNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedNumericStringPDNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedNumericStringPCNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringIndex = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringSDNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringSCNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringCalculativeFDNF = new StringBuilder();
+    private final StringBuilder/*                            */bufferedStringCalculativeFCNF = new StringBuilder();
 
     private static final Pattern OPERAND_PATTERN = Pattern.compile("(!?[A-z]+)");
 
     public TruthTable(String expression) {
-        int operandsCount = countOperands(expression);
+        bufferedExpression.append(expression);
+
+        int operandsCount = countOperands();
 
         ProcessingSequence sequence = ProcessingSequence.fromString(expression);
 
@@ -30,7 +45,8 @@ public class TruthTable {
     }
 
     public List<String> getOperands() {
-        return operands.stream().toList();
+        countOperands();
+        return bufferedOperands.stream().toList();
     }
 
     public List<List<Boolean>> getContents() {
@@ -41,15 +57,21 @@ public class TruthTable {
         return contents.get(0).size();
     }
 
-    private int countOperands(String expression) {
-        return (int) OPERAND_PATTERN
+    private int countOperands() {
+        if (bufferedOperands.isEmpty()) {
+            bufferedOperands.addAll(getUniqueOperands(bufferedExpression.toString()));
+        }
+        return bufferedOperands.size();
+    }
+
+    private List<String> getUniqueOperands(String expression) {
+        return OPERAND_PATTERN
                 .matcher(expression)
                 .results()
                 .map(matchResult -> matchResult.group().replace("!", ""))
                 .distinct()
                 .sorted()
-                .peek(operands::add)
-                .count();
+                .toList();
     }
 
     private List<List<Boolean>> generateStates(int size) {
@@ -67,36 +89,60 @@ public class TruthTable {
         return rows;
     }
 
-    public String getPDNF() {
-        bufferedPDNF.clear();
+    public String getPrincipal(boolean PCNF) {
+        List<List<String>> buffer = PCNF ? bufferedPCNF : bufferedPDNF;
+        List<List<String>> localBuffer = new ArrayList<>();
+        StringBuilder bufferedString = PCNF ? bufferedStringPCNF : bufferedStringPDNF;
+
+        if (!bufferedString.isEmpty())
+            return bufferedString.toString();
 
         StringBuilder result = new StringBuilder();
 
         for (List<Boolean> row : contents) {
-            if (row.get(getWidth() - 1)) {
+            if (PCNF ^ row.get(getWidth() - 1)) {
                 if (!result.isEmpty()) {
-                    result.append(" + ");
+                    result.append(PCNF ? " * " : " + ");
                 }
-                String onesConstituent = constructOnesConstituent(row);
-                bufferedPDNF.add(Arrays.stream(onesConstituent
+                String constituent = PCNF ? constructZerosConstituent(row) : constructOnesConstituent(row);
+                localBuffer.add(Arrays.stream(constituent
                                 .replaceAll("[^!A-z\\s]", "")
                                 .replaceAll("\\s{2,}", " ")
                                 .split("\\s"))
-                        .collect(Collectors.toList())
+                        .toList()
                 );
-                result.append(onesConstituent);
+                result.append(constituent);
             }
         }
 
-        return result.toString();
+        if (buffer.isEmpty()) {
+            buffer.addAll(localBuffer);
+        }
+
+        bufferedString.append(result);
+
+        return bufferedString.toString();
     }
 
-    public String getNumericPDNF() {
+    public String getPDNF() {
+        return getPrincipal(false);
+    }
+
+    public String getPCNF() {
+        return getPrincipal(true);
+    }
+
+    public String getNumeric(boolean PCNF) {
+        StringBuilder bufferedString = PCNF ? bufferedNumericStringPCNF : bufferedNumericStringPDNF;
+
+        if (!bufferedString.isEmpty())
+            return bufferedString.toString();
+
         StringBuilder result = new StringBuilder();
 
         Iterator<List<Boolean>> iterator = contents.iterator();
         for (int index = 0; iterator.hasNext(); index++) {
-            if (iterator.next().get(getWidth() - 1)) {
+            if (PCNF ^ iterator.next().get(getWidth() - 1)) {
                 if (!result.isEmpty()) {
                     result.append(", ");
                 }
@@ -104,10 +150,50 @@ public class TruthTable {
             }
         }
 
-        return result.insert(0, "+(").append(")").toString();
+        result.insert(0, PCNF ? "*(" : "+(").append(")");
+        bufferedString.append(result);
+
+        return bufferedString.toString();
+    }
+
+    public String getNumericPDNF() {
+        return getNumeric(false);
+    }
+
+    public String getNumericPCNF() {
+        return getNumeric(true);
+    }
+
+    private String constructConstituent(boolean Ones, List<Boolean> row) {
+        StringBuilder result = new StringBuilder();
+
+        for (int index = 0; index < getWidth() - 1; index++) {
+            String element = bufferedOperands.get(index);
+            if (Ones ^ row.get(index)) {
+                element = "!" + element;
+            }
+
+            result.append(element);
+            if (index != (getWidth() - 2)) {
+                result.append(Ones ? " * " : " + ");
+            }
+        }
+
+        return result.insert(0, "(").append(")").toString();
+    }
+
+    private String constructOnesConstituent(List<Boolean> row) {
+        return constructConstituent(true, row);
+    }
+
+    private String constructZerosConstituent(List<Boolean> row) {
+        return constructConstituent(false, row);
     }
 
     public String getIndexForm() {
+        if (!bufferedStringIndex.isEmpty())
+            return bufferedStringIndex.toString();
+
         StringBuilder result = new StringBuilder();
 
         StringBuilder indexStringRepresentation = new StringBuilder();
@@ -117,84 +203,11 @@ public class TruthTable {
 
         int indexOfFunction = Integer.parseInt(indexStringRepresentation.toString(), 2);
 
-        return result.insert(0, "f(" + (getWidth() - 1)).append(")").append(indexOfFunction).toString();
-    }
+        result.insert(0, "f(" + (getWidth() - 1)).append(")").append(indexOfFunction);
 
-    public String getNumericPCNF() {
-        StringBuilder result = new StringBuilder();
+        bufferedStringIndex.append(result);
 
-        Iterator<List<Boolean>> iterator = contents.iterator();
-        for (int index = 0; iterator.hasNext(); index++) {
-            if (!iterator.next().get(getWidth() - 1)) {
-                if (!result.isEmpty()) {
-                    result.append(", ");
-                }
-                result.append(index);
-            }
-        }
-
-        return result.insert(0, "*(").append(")").toString();
-    }
-
-    public String getPCNF() {
-        bufferedPCNF.clear();
-
-        StringBuilder result = new StringBuilder();
-
-        for (List<Boolean> row : contents) {
-            if (!row.get(getWidth() - 1)) {
-                if (!result.isEmpty()) {
-                    result.append(" * ");
-                }
-                String zeroesConstituent = constructZerosConstituent(row);
-                bufferedPCNF.add(Arrays.stream(zeroesConstituent
-                                .replaceAll("[^!A-z\\s]", "")
-                                .replaceAll("\\s{2,}", " ")
-                                .split("\\s"))
-                        .map(String::trim)
-                        .collect(Collectors.toList())
-                );
-                result.append(zeroesConstituent);
-            }
-        }
-
-        return result.toString();
-    }
-
-    private String constructOnesConstituent(List<Boolean> row) {
-        StringBuilder result = new StringBuilder();
-
-        for (int index = 0; index < getWidth() - 1; index++) {
-            String element = operands.get(index);
-            if (!row.get(index)) {
-                element = "!" + element;
-            }
-
-            result.append(element);
-            if (index != (getWidth() - 2)) {
-                result.append(" * ");
-            }
-        }
-
-        return result.insert(0, "(").append(")").toString();
-    }
-
-    private String constructZerosConstituent(List<Boolean> row) {
-        StringBuilder result = new StringBuilder();
-
-        for (int index = 0; index < getWidth() - 1; index++) {
-            String element = operands.get(index);
-            if (row.get(index)) {
-                element = "!" + element;
-            }
-
-            result.append(element);
-            if (index != (getWidth() - 2)) {
-                result.append(" + ");
-            }
-        }
-
-        return result.insert(0, "(").append(")").toString();
+        return bufferedStringIndex.toString();
     }
 
     private boolean isPrime(List<String> implicant, List<List<String>> allImplicants) {
@@ -203,32 +216,29 @@ public class TruthTable {
                 continue;
             }
 
-            List<Integer> dashes1 = IntStream.range(0, implicant.size())
-                    .map(index -> implicant.get(index).equals("-") ? index : -1)
-                    .filter(val -> val != -1)
-                    .boxed()
-                    .toList();
+            boolean dashesAlign = IntStream.range(0, implicant.size())
+                    .reduce(0, (result, index) -> {
+                        String implicantToken = implicant.get(index);
+                        String comparisonToken = compareAgainst.get(index);
+                        if ((implicantToken.equals("-") || comparisonToken.equals("-")) && !implicantToken.equals(comparisonToken)) {
+                            return result + 1;
+                        }
+                        return result;
+                    }) == 0;
 
-            List<Integer> dashes2 = IntStream.range(0, compareAgainst.size())
-                    .map(index -> compareAgainst.get(index).equals("-") ? index : -1)
-                    .filter(val -> val != -1)
-                    .boxed()
-                    .toList();
-
-            boolean dashesAlign = dashes1.equals(dashes2);
-
-            if (dashesAlign) {
+            if (dashesAlign)
                 return false;
-            }
         }
         return true;
     }
 
-    private List<List<String>> getIterationPrimes(List<List<String>> reducedForm) {
-        List<List<String>> primes = new ArrayList<>();
-        for (List<String> implicant : reducedForm) {
-            if (isPrime(implicant, reducedForm)) {
-                primes.add(implicant.stream().toList());
+    private List<Pair<List<String>, List<Integer>>> getIterationPrimes(List<Pair<List<String>, List<Integer>>> reducedForm) {
+        List<List<String>> implicantsOnly = reducedForm.stream().map(Pair::getKey).toList();
+
+        List<Pair<List<String>, List<Integer>>> primes = new ArrayList<>();
+        for (Pair<List<String>, List<Integer>> pair : reducedForm) {
+            if (isPrime(pair.getKey(), implicantsOnly)) {
+                primes.add(pair);
             }
         }
         return primes;
@@ -255,7 +265,6 @@ public class TruthTable {
         if (equals) {
             result.set(result.indexOf(diff1), "-");
         }
-
         return result;
     }
 
@@ -268,7 +277,11 @@ public class TruthTable {
     }
 
     public String getShortenedForm(boolean SCNF) {
-        List<List<String>> buffer = SCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
+        List<Pair<List<String>, List<Integer>>> buffer = SCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
+        StringBuilder bufferedString = SCNF ? bufferedStringSCNF : bufferedStringSDNF;
+
+        if (!bufferedString.isEmpty())
+            return bufferedString.toString();
 
         if (buffer.isEmpty()) {
             if (SCNF) {
@@ -277,9 +290,12 @@ public class TruthTable {
                 getPDNFPrimes();
             }
         }
+
+        List<List<String>> primes = buffer.stream().map(Pair::getKey).toList();
+
         StringBuilder result = new StringBuilder();
 
-        for (List<String> prime : buffer) {
+        for (List<String> prime : primes) {
             StringBuilder primeStringBuilder = new StringBuilder("(");
             for (String operand : prime) {
                 primeStringBuilder.append(operand);
@@ -289,25 +305,44 @@ public class TruthTable {
             }
             primeStringBuilder.append(")");
             result.append(primeStringBuilder);
-            if (!prime.equals(buffer.get(buffer.size() - 1))) {
+            if (!prime.equals(primes.get(primes.size() - 1))) {
                 result.append(SCNF ? " * " : " + ");
             }
         }
 
-        return result.toString();
+        bufferedString.append(result);
+
+        return bufferedString.toString();
     }
 
-    private void getPDNFPrimes() {
-        getFormPrimes(false);
+    private List<Pair<List<String>, List<Integer>>> getPDNFPrimes() {
+        return getFormPrimes(false);
     }
 
-    private void getPCNFPrimes() {
-        getFormPrimes(true);
+    private List<Pair<List<String>, List<Integer>>> getPCNFPrimes() {
+        return getFormPrimes(true);
     }
 
-    private void getFormPrimes(boolean PCNF) {
+    private List<Pair<List<String>, List<Integer>>> withMatchInfo(List<List<String>> implicant) {
+        return implicant
+                .stream()
+                .map(list -> new Pair<>(list, (List<Integer>) new ArrayList<Integer>()))
+                .toList();
+    }
+
+    private List<List<String>> noMatchInfo(List<Pair<List<String>, List<Integer>>> implicant) {
+        return implicant
+                .stream()
+                .map(Pair::getKey)
+                .toList();
+    }
+
+    private List<Pair<List<String>, List<Integer>>> getFormPrimes(boolean PCNF) {
         List<List<String>> buffer = PCNF ? bufferedPCNF : bufferedPDNF;
-        List<List<String>> primeBuffer = PCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
+        List<Pair<List<String>, List<Integer>>> primeBuffer = PCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
+
+        if (!primeBuffer.isEmpty())
+            return primeBuffer;
 
         if (buffer.isEmpty()) {
             if (PCNF) {
@@ -316,16 +351,35 @@ public class TruthTable {
                 getPDNF();
             }
         }
-        primeBuffer.clear();
-        primeBuffer.addAll(getPrimeImplicants(buffer, new ArrayList<>()));
+
+        List<Pair<List<String>, List<Integer>>> converted = withMatchInfo(buffer);
+        primeBuffer.addAll(getPrimeImplicants(converted, new ArrayList<>()));
+
+        return primeBuffer;
     }
 
-    private List<List<String>> getPrimeImplicants(List<List<String>> toReduce, List<List<String>> primes) {
-        List<List<String>> shortened = new ArrayList<>();
-        List<List<List<String>>> implicantLevels = new ArrayList<>();
+    private int constituentToInt(List<String> consistent) {
+        return Integer.parseInt(consistent.stream().collect(
+                StringBuilder::new,
+                (builder, op) -> builder.append(op.contains("!") ? 0 : 1),
+                StringBuilder::append
+        ).toString(), 2);
+    }
 
-        for (List<String> implicant : toReduce) {
-            int level = implicant.stream().map(op -> op.startsWith("!") ? 0 : 1).reduce(0, Integer::sum);
+    private List<Pair<List<String>, List<Integer>>> getPrimeImplicants(List<Pair<List<String>, List<Integer>>> toReduce, List<Pair<List<String>, List<Integer>>> primes) {
+        List<Pair<List<String>, List<Integer>>> shortened = new ArrayList<>();
+        List<List<Pair<List<String>, List<Integer>>>> implicantLevels = new ArrayList<>();
+
+        for (var implicantIterator = toReduce.listIterator(); implicantIterator.hasNext(); ) {
+            int index = implicantIterator.nextIndex();
+            Pair<List<String>, List<Integer>> implicant = implicantIterator.next();
+            if (implicant.getValue().isEmpty()) {
+                implicant.getValue().add(constituentToInt(implicant.getKey()));
+            }
+        }
+
+        for (var implicant : toReduce) {
+            int level = implicant.getKey().stream().map(op -> op.startsWith("!") ? 0 : 1).reduce(0, Integer::sum);
             while (implicantLevels.size() <= level) {
                 implicantLevels.add(new ArrayList<>());
             }
@@ -333,12 +387,20 @@ public class TruthTable {
         }
 
         for (int level = 0; level < implicantLevels.size() - 1; level++) {
-            for (List<String> implicant : implicantLevels.get(level)) {
-                for (List<String> toCheck : implicantLevels.get(level + 1)) {
-                    List<String> matched = matchImplicants(implicant, toCheck);
-                    if (matched.stream().filter(pos -> pos.equals("-")).count() >
-                            implicant.stream().filter(pos -> pos.equals("-")).count()
-                            && !shortened.contains(matched)) {
+            List<Pair<List<String>, List<Integer>>> thisLevel = implicantLevels.get(level);
+            List<Pair<List<String>, List<Integer>>> nextLevel = implicantLevels.get(level + 1);
+            for (Pair<List<String>, List<Integer>> implicant : thisLevel) {
+                for (Pair<List<String>, List<Integer>> toCheck : nextLevel) {
+                    List<Integer> joinedIndices = new ArrayList<>(implicant.getValue());
+                    joinedIndices.addAll(toCheck.getValue());
+
+                    Pair<List<String>, List<Integer>> matched =
+                            new Pair<>(matchImplicants(implicant.getKey(), toCheck.getKey()),
+                                    joinedIndices);
+
+                    if (matched.getKey().stream().filter(pos -> pos.equals("-")).count() >
+                            toCheck.getKey().stream().filter(pos -> pos.equals("-")).count()
+                            && !noMatchInfo(shortened).contains(matched.getKey())) {
                         shortened.add(matched);
                     }
                 }
@@ -354,10 +416,10 @@ public class TruthTable {
         } else {
             return primes
                     .stream()
-                    .map(prime -> prime
+                    .map(pair -> new Pair<>(pair.getKey()
                             .stream()
                             .filter(val -> !val.equals("-"))
-                            .toList())
+                            .toList(), pair.getValue()))
                     .toList();
         }
     }
