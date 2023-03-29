@@ -424,6 +424,93 @@ public class TruthTable {
         }
     }
 
+    public String getCalculativeFDNF() {
+        return getCalculativeReduction(false);
+    }
+
+    public String getCalculativeFCNF() {
+        return getCalculativeReduction(true);
+    }
+
+    private String getCalculativeReduction(boolean FCNF) {
+        StringBuilder resultBuffer = FCNF ? bufferedStringCalculativeFCNF : bufferedStringCalculativeFDNF;
+        if (!resultBuffer.isEmpty())
+            return resultBuffer.toString();
+
+        List<List<String>> reduced = calculativeReduction(FCNF);
+
+        StringBuilder result = new StringBuilder();
+
+        for (List<String> implicant : reduced) {
+            if (!result.isEmpty() && (reduced.indexOf(implicant) != reduced.size())) {
+                result.append(FCNF ? " * " : " + ");
+            }
+            StringBuilder constituent = new StringBuilder().append("(");
+            for (ListIterator<String> opIterator = implicant.listIterator(); opIterator.hasNext(); ) {
+                int opIndex = opIterator.nextIndex();
+                constituent.append(opIterator.next());
+                if (opIndex != (implicant.size() - 1)) {
+                    constituent.append(FCNF ? " + " : " * ");
+                }
+            }
+            constituent.append(")");
+            result.append(constituent);
+        }
+
+        resultBuffer.append(result);
+
+        return resultBuffer.toString();
+    }
+
+    private List<List<String>> calculativeReduction(boolean FCNF) {
+        List<List<String>> resultBuffer = FCNF ? bufferedCalculativeFCNF : bufferedCalculativeFDNF;
+        if (!resultBuffer.isEmpty())
+            return resultBuffer;
+
+        List<List<String>> buffer = FCNF ? noMatchInfo(bufferedPCNFPrimes) : noMatchInfo(bufferedPDNFPrimes);
+
+        if (buffer.isEmpty()) {
+            if (FCNF) {
+                getSCNF();
+            } else {
+                getSDNF();
+            }
+        }
+
+        List<List<String>> copy = new ArrayList<>(buffer);
+
+        for (int index = 0; index < buffer.size(); index++) {
+            List<List<String>> remainder = new ArrayList<>(buffer);
+            List<String> currentImplicant = remainder.remove(index);
+
+            StringBuilder remainderExpression = new StringBuilder();
+            for (List<String> implicant : remainder) {
+                if (!remainderExpression.isEmpty() && (buffer.indexOf(implicant) != buffer.size())) {
+                    remainderExpression.append(FCNF ? " * " : " + ");
+                }
+                StringBuilder constituent = new StringBuilder().append("(");
+                for (ListIterator<String> opIterator = implicant.listIterator(); opIterator.hasNext(); ) {
+                    int opIndex = opIterator.nextIndex();
+                    constituent.append(opIterator.next());
+                    if (opIndex != (implicant.size() - 1)) {
+                        constituent.append(FCNF ? " + " : " * ");
+                    }
+                }
+                constituent.append(")");
+                remainderExpression.append(constituent);
+            }
+
+            String remainderIndex = new TruthTable(remainderExpression.toString()).getIndexForm();
+            if (remainderIndex.equals(getIndexForm())) {
+                copy.remove(currentImplicant);
+            }
+        }
+
+        resultBuffer.addAll(copy);
+
+        return resultBuffer;
+    }
+
     @Override
     public String toString() {
         StringBuilder result = new StringBuilder();

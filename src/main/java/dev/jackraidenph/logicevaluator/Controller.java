@@ -38,6 +38,12 @@ public class Controller {
     private Label sdnfRes;
 
     @FXML
+    private Label cfcnfRes;
+
+    @FXML
+    private Label cfdnfRes;
+
+    @FXML
     private TableView<List<Boolean>> truthTableView;
 
     @FXML
@@ -79,6 +85,8 @@ public class Controller {
         indexRes.setText("Index form: " + truthTable.getIndexForm());
         sdnfRes.setText("SDNF form: " + truthTable.getSDNF());
         scnfRes.setText("SCNF form: " + truthTable.getSCNF());
+        cfdnfRes.setText("Calculated FDNF form: " + truthTable.getCalculativeFDNF());
+        cfcnfRes.setText("Calculated FCNF form: " + truthTable.getCalculativeFCNF());
     }
 
     private void customiseFactory(TableColumn<List<Boolean>, String> column) {
