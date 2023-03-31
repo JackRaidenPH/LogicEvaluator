@@ -16,6 +16,11 @@ public class TruthTable {
     private final List<Pair<List<String>, List<Integer>>>/*  */bufferedPCNFPrimes = new ArrayList<>();
     private final List<List<String>>/*                       */bufferedCalculativeFDNF = new ArrayList<>();
     private final List<List<String>>/*                       */bufferedCalculativeFCNF = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedQMCCFDNF = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedQMCCFCNF = new ArrayList<>();
+    private final List<List<String>>/*                       */bufferedKMap = new ArrayList<>();
+    private final List<Integer>/*                            */bufferedGrayRow = new ArrayList<>();
+    private final List<Integer>/*                            */bufferedGrayCol = new ArrayList<>();
 
     private final StringBuilder/*                            */bufferedExpression = new StringBuilder();
     private final StringBuilder/*                            */bufferedStringPDNF = new StringBuilder();
@@ -74,7 +79,7 @@ public class TruthTable {
                 .toList();
     }
 
-    private List<List<Boolean>> generateStates(int size) {
+    protected static List<List<Boolean>> generateStates(int size) {
         List<List<Boolean>> rows = new ArrayList<>();
         int rowsCount = (int) Math.pow(2, size);
 
@@ -370,9 +375,7 @@ public class TruthTable {
         List<Pair<List<String>, List<Integer>>> shortened = new ArrayList<>();
         List<List<Pair<List<String>, List<Integer>>>> implicantLevels = new ArrayList<>();
 
-        for (var implicantIterator = toReduce.listIterator(); implicantIterator.hasNext(); ) {
-            int index = implicantIterator.nextIndex();
-            Pair<List<String>, List<Integer>> implicant = implicantIterator.next();
+        for (Pair<List<String>, List<Integer>> implicant : toReduce) {
             if (implicant.getValue().isEmpty()) {
                 implicant.getValue().add(constituentToInt(implicant.getKey()));
             }
@@ -483,24 +486,9 @@ public class TruthTable {
             List<List<String>> remainder = new ArrayList<>(buffer);
             List<String> currentImplicant = remainder.remove(index);
 
-            StringBuilder remainderExpression = new StringBuilder();
-            for (List<String> implicant : remainder) {
-                if (!remainderExpression.isEmpty() && (buffer.indexOf(implicant) != buffer.size())) {
-                    remainderExpression.append(FCNF ? " * " : " + ");
-                }
-                StringBuilder constituent = new StringBuilder().append("(");
-                for (ListIterator<String> opIterator = implicant.listIterator(); opIterator.hasNext(); ) {
-                    int opIndex = opIterator.nextIndex();
-                    constituent.append(opIterator.next());
-                    if (opIndex != (implicant.size() - 1)) {
-                        constituent.append(FCNF ? " + " : " * ");
-                    }
-                }
-                constituent.append(")");
-                remainderExpression.append(constituent);
-            }
+            String remainderExpression = constructFromList(FCNF, remainder);
 
-            String remainderIndex = new TruthTable(remainderExpression.toString()).getIndexForm();
+            String remainderIndex = new TruthTable(remainderExpression).getIndexForm();
             if (remainderIndex.equals(getIndexForm())) {
                 copy.remove(currentImplicant);
             }
@@ -509,6 +497,156 @@ public class TruthTable {
         resultBuffer.addAll(copy);
 
         return resultBuffer;
+    }
+
+    public String getQuineMcCluskeyFDNF() {
+        return getQuineMcCluskey(false);
+    }
+
+    public String getQuineMcCluskeyFCNF() {
+        return getQuineMcCluskey(true);
+    }
+
+    private String getQuineMcCluskey(boolean FCNF) {
+        return constructFromList(FCNF, QuineMcCluskey(FCNF));
+    }
+
+    public List<List<String>> QuineMcCluskey(boolean FCNF) {
+        List<List<String>> resultBuffer = FCNF ? bufferedQMCCFCNF : bufferedQMCCFDNF;
+        if (!resultBuffer.isEmpty())
+            return resultBuffer;
+
+        List<Pair<List<String>, List<Integer>>> buffer = FCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
+
+        List<List<String>> result = new ArrayList<>();
+
+        for (var pair : buffer) {
+            List<List<Integer>> areas = buffer
+                    .stream()
+                    .map(Pair::getValue)
+                    .filter(val -> !val.equals(pair.getValue()))
+                    .toList();
+            for (Integer implicant : pair.getValue()) {
+                if (uniqueCoverage(implicant, areas)) {
+                    result.add(pair.getKey());
+                }
+            }
+        }
+
+        resultBuffer.addAll(result);
+
+        return resultBuffer;
+    }
+
+    private boolean uniqueCoverage(Integer checking, List<List<Integer>> toCheck) {
+        for (List<Integer> implicantAreaCheck : toCheck) {
+            for (Integer check : implicantAreaCheck) {
+                if (checking.equals(check)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private String constructFromList(boolean CNF, List<List<String>> list) {
+        StringBuilder result = new StringBuilder();
+        for (List<String> implicant : list) {
+            if (!result.isEmpty() && (list.indexOf(implicant) != list.size())) {
+                result.append(CNF ? " * " : " + ");
+            }
+            StringBuilder constituent = new StringBuilder().append("(");
+            for (ListIterator<String> opIterator = implicant.listIterator(); opIterator.hasNext(); ) {
+                int opIndex = opIterator.nextIndex();
+                constituent.append(opIterator.next());
+                if (opIndex != (implicant.size() - 1)) {
+                    constituent.append(CNF ? " + " : " * ");
+                }
+            }
+            constituent.append(")");
+            result.append(constituent);
+        }
+        return result.toString();
+    }
+
+    /*private boolean isFullCoverage(List<List<Integer>> toCheck, List<Integer> full) {
+        return toCheck
+                .stream()
+                .collect(ArrayList::new, ArrayList::addAll, ArrayList::addAll)
+                .equals(full);
+    }*/
+
+    public List<List<String>> buildKMap() {
+        if (!bufferedKMap.isEmpty()) {
+            return bufferedKMap;
+        }
+
+        final int size = getWidth() - 1;
+
+        int rows = (1 << (size >> 1)); //Basically gets rid of the first bit
+        int cols = (1 << size) / rows; //Somehow not the same as (2 * size) / rows
+
+        String[][] result = new String[rows][cols];
+
+        bufferedGrayRow.clear();
+        bufferedGrayCol.clear();
+        bufferedGrayRow.addAll(grayCode(size / 2));
+        bufferedGrayCol.addAll(grayCode(size - size / 2));
+
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                result[bufferedGrayRow.get(i)][bufferedGrayCol.get(j)] =
+                        contents.get(j * rows + i).get(size) ? "1" : "0";
+            }
+        }
+
+        bufferedKMap.addAll(
+                Arrays.stream(result)
+                        .map(Arrays::asList)
+                        .toList()
+        );
+
+        return bufferedKMap;
+    }
+
+    public String getKMapString() {
+        buildKMap();
+
+        final int rows = bufferedKMap.size();
+        final int cols = bufferedKMap.get(0).size();
+        final int size = getWidth() - 1;
+
+        String[] rowHead = new String[rows];
+        String[] colHead = new String[cols];
+        for (int i = 0; i < rows; i++)
+            rowHead[i] = Integer.toBinaryString(bufferedGrayRow.get(i));
+        for (int i = 0; i < cols; i++)
+            colHead[i] = Integer.toBinaryString(bufferedGrayCol.get(i));
+
+        StringBuilder result = new StringBuilder();
+
+        result.append(String.format("%8s", " "));
+        for (int i = 0; i < cols; i++) {
+            result.append(String.format("%8s", colHead[i]));
+        }
+        result.append("\n");
+
+        for (int i = 0; i < rows; i++) {
+            result.append(String.format("%8s", rowHead[i]));
+            for (int j = 0; j < cols; j++) {
+                result.append(String.format("%8s", bufferedKMap.get(i).get(j)));
+            }
+            result.append("\n");
+        }
+        return result.toString();
+    }
+
+    private List<Integer> grayCode(int size) {
+        List<Integer> result = new ArrayList<>();
+        for (int i = 0; i < size * 2; i++) {
+            result.add(i ^ (i / 2));
+        }
+        return result;
     }
 
     @Override

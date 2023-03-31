@@ -29,6 +29,9 @@
                   <Label fx:id="scnfRes" layoutX="20.0" layoutY="20.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="144.0" />
                   <Label fx:id="cfdnfRes" layoutX="30.0" layoutY="30.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="168.0" />
                   <Label fx:id="cfcnfRes" layoutX="40.0" layoutY="40.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="192.0" />
+                  <Label fx:id="qmccfdnfRes" layoutX="50.0" layoutY="50.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="216.0" />
+                  <Label fx:id="qmccfcnfRes" layoutX="60.0" layoutY="60.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="240.0" />
+                  <Label fx:id="kmapRes" layoutX="70.0" layoutY="70.0" AnchorPane.leftAnchor="0.0" AnchorPane.topAnchor="264.0" />
                </children>
             </AnchorPane>
         </content>

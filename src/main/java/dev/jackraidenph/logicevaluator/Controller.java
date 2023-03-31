@@ -9,6 +9,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Background;
 import javafx.scene.paint.Color;
 
+import java.net.URL;
 import java.util.*;
 
 public class Controller {
@@ -44,6 +45,15 @@ public class Controller {
     private Label cfdnfRes;
 
     @FXML
+    private Label qmccfcnfRes;
+
+    @FXML
+    private Label qmccfdnfRes;
+
+    @FXML
+    private Label kmapRes;
+
+    @FXML
     private TableView<List<Boolean>> truthTableView;
 
     @FXML
@@ -51,7 +61,7 @@ public class Controller {
 
     @FXML
     void onEvaluate(ActionEvent event) {
-        if(inputField.getText().isEmpty())
+        if (inputField.getText().isEmpty())
             return;
 
         truthTableView.getItems().clear();
@@ -74,7 +84,7 @@ public class Controller {
             truthTableView.getColumns().add(column);
         }
 
-        for(List<Boolean> row : truthTable.getContents()) {
+        for (List<Boolean> row : truthTable.getContents()) {
             truthTableView.getItems().add(row);
         }
 
@@ -87,6 +97,9 @@ public class Controller {
         scnfRes.setText("SCNF form: " + truthTable.getSCNF());
         cfdnfRes.setText("Calculated FDNF form: " + truthTable.getCalculativeFDNF());
         cfcnfRes.setText("Calculated FCNF form: " + truthTable.getCalculativeFCNF());
+        qmccfdnfRes.setText("Quine-McCluskey FDNF form: " + truthTable.getQuineMcCluskeyFDNF());
+        qmccfcnfRes.setText("Quine-McCluskey FCNF form: " + truthTable.getQuineMcCluskeyFCNF());
+        kmapRes.setText("Karnaugh Map:\n" + truthTable.getKMapString());
     }
 
     private void customiseFactory(TableColumn<List<Boolean>, String> column) {
@@ -95,7 +108,7 @@ public class Controller {
             protected void updateItem(String item, boolean empty) {
                 super.updateItem(item, empty);
                 setText(empty ? "" : getItem());
-                if(!empty) {
+                if (!empty) {
                     setAlignment(Pos.CENTER);
                     setBackground(Background.fill(item.equals("1") ? Color.GREEN : Color.RED));
                 }
