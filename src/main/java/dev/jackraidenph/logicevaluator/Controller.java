@@ -9,7 +9,6 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Background;
 import javafx.scene.paint.Color;
 
-import java.net.URL;
 import java.util.*;
 
 public class Controller {
@@ -51,7 +50,10 @@ public class Controller {
     private Label qmccfdnfRes;
 
     @FXML
-    private Label kmapRes;
+    private Label kmapFDNFRes;
+
+    @FXML
+    private Label kmapFCNFRes;
 
     @FXML
     private TableView<List<Boolean>> truthTableView;
@@ -99,7 +101,8 @@ public class Controller {
         cfcnfRes.setText("Calculated FCNF form: " + truthTable.getCalculativeFCNF());
         qmccfdnfRes.setText("Quine-McCluskey FDNF form: " + truthTable.getQuineMcCluskeyFDNF());
         qmccfcnfRes.setText("Quine-McCluskey FCNF form: " + truthTable.getQuineMcCluskeyFCNF());
-        kmapRes.setText("Karnaugh Map:\n" + truthTable.getKMapString());
+        kmapFDNFRes.setText("Karnaugh Map FDNF: " + truthTable.getKMapFDNF());
+        kmapFCNFRes.setText("Karnaugh Map FCNF: " + truthTable.getKMapFCNF());
     }
 
     private void customiseFactory(TableColumn<List<Boolean>, String> column) {

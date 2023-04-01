@@ -47,6 +47,10 @@ public class TruthTable {
             row.add(result);
             contents.add(row);
         }
+
+        final int size = getWidth() - 1;
+        bufferedGrayRow.addAll(grayCode(size / 2));
+        bufferedGrayCol.addAll(grayCode(size - size / 2));
     }
 
     public List<String> getOperands() {
@@ -538,6 +542,19 @@ public class TruthTable {
         return resultBuffer;
     }
 
+    private List<List<String>> implicantMatrixFromNumeric(List<Integer> numeric, boolean flip) {
+        return numeric
+                .stream()
+                .map(val -> String.format("%" + countOperands() + "s", Integer.toBinaryString(val)).replaceAll(" ", "0"))
+                .map(str -> {
+                    List<String> result = new ArrayList<>();
+                    for (int i = 0; i < str.length(); i++) {
+                        result.add(((str.charAt(i) == '0' == flip) ? "!" : "") + bufferedOperands.get(i));
+                    }
+                    return result;
+                }).toList();
+    }
+
     private boolean uniqueCoverage(Integer checking, List<List<Integer>> toCheck) {
         for (List<Integer> implicantAreaCheck : toCheck) {
             for (Integer check : implicantAreaCheck) {
@@ -569,13 +586,6 @@ public class TruthTable {
         return result.toString();
     }
 
-    /*private boolean isFullCoverage(List<List<Integer>> toCheck, List<Integer> full) {
-        return toCheck
-                .stream()
-                .collect(ArrayList::new, ArrayList::addAll, ArrayList::addAll)
-                .equals(full);
-    }*/
-
     public List<List<String>> buildKMap() {
         if (!bufferedKMap.isEmpty()) {
             return bufferedKMap;
@@ -587,11 +597,6 @@ public class TruthTable {
         int cols = (1 << size) / rows; //Somehow not the same as (2 * size) / rows
 
         String[][] result = new String[rows][cols];
-
-        bufferedGrayRow.clear();
-        bufferedGrayCol.clear();
-        bufferedGrayRow.addAll(grayCode(size / 2));
-        bufferedGrayCol.addAll(grayCode(size - size / 2));
 
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
@@ -609,12 +614,148 @@ public class TruthTable {
         return bufferedKMap;
     }
 
+    private boolean[][] kMapToMatrix() {
+        buildKMap();
+
+        boolean[][] matrix = new boolean[bufferedKMap.size()][bufferedKMap.get(0).size()];
+
+        for (ListIterator<List<String>> rowIter = bufferedKMap.listIterator(); rowIter.hasNext(); ) {
+            final int rowIndex = rowIter.nextIndex();
+            List<String> row = rowIter.next();
+            for (ListIterator<String> colIter = row.listIterator(); colIter.hasNext(); ) {
+                final int colIndex = colIter.nextIndex();
+                String value = colIter.next();
+                matrix[rowIndex][colIndex] = value.equals("1");
+            }
+        }
+
+        return matrix;
+    }
+
+    private int[][] grayMatrix() {
+        int[][] matrix = new int[bufferedGrayRow.size()][bufferedGrayCol.size()];
+
+        for (int x = 0; x < bufferedGrayCol.size(); x++) {
+            for (int y = 0; y < bufferedGrayRow.size(); y++) {
+                matrix[y][x] = bufferedGrayCol.get(x) * bufferedGrayRow.size()
+                        + bufferedGrayRow.get(y);
+            }
+        }
+
+        return matrix;
+    }
+
+    public Pair<Integer, Integer> getMatrixValueOverlap(int x, int y, boolean[][] matrix) {
+        return new Pair<>(x % matrix[0].length, y % matrix.length);
+    }
+
+    public List<List<Integer>> traverseKMap(boolean ones) {
+        boolean[][] matrixKMap = kMapToMatrix();
+
+        final int rows = bufferedKMap.size();
+        final int cols = bufferedKMap.get(0).size();
+        List<List<Integer>> result = new ArrayList<>();
+        boolean[][] checked = new boolean[rows][cols];
+        final int maxRect = (int) Math.floor(Math.log(Math.max(rows, cols)) / Math.log(2));
+        for (int i = 0; i < rows; i++) {
+            for (int yLevels = maxRect; yLevels >= 0; yLevels--) {
+                for (int j = 0; j < cols; j++) {
+                    for (int xLevels = maxRect; xLevels >= 0; xLevels--) {
+                        int rectX = (int) Math.pow(2, xLevels);
+                        int rectY = (int) Math.pow(2, yLevels);
+                        checkMatrixSegment(rectX, rectY, i, j, matrixKMap, checked, ones)
+                                .ifPresent(result::add);
+                    }
+                }
+            }
+        }
+        List<List<Integer>> filtered = result
+                .stream()
+                .filter(impl -> impl
+                        .stream()
+                        .anyMatch(i -> uniqueCoverage(i, result
+                                .stream()
+                                .filter(val -> !val.equals(impl))
+                                .toList())))
+                .toList();
+
+        return filtered;
+    }
+
+    private List<String> primesFromMatrix(List<Integer> numeric, boolean ones) {
+        List<List<String>> implicants = implicantMatrixFromNumeric(numeric, ones);
+        List<String> prime = new ArrayList<>();
+        for (String operand : bufferedOperands) {
+            if (implicants.stream().allMatch(impl -> impl.contains(operand))) {
+                prime.add(operand);
+            }
+            if (implicants.stream().allMatch(impl -> impl.contains("!" + operand))) {
+                prime.add("!" + operand);
+            }
+        }
+        return prime;
+    }
+
+    public String getKMapFDNF() {
+        return getKMapReduction(false);
+    }
+
+    public String getKMapFCNF() {
+        return getKMapReduction(true);
+    }
+
+    private String getKMapReduction(boolean FCNF) {
+        List<List<String>> result = new ArrayList<>();
+        for (List<Integer> numerics : traverseKMap(!FCNF)) {
+            result.add(primesFromMatrix(numerics, !FCNF));
+        }
+        return constructFromList(FCNF, result);
+    }
+
+    private Optional<List<Integer>> checkMatrixSegment(int width, int height, int yOffset, int xOffset,
+                                                       boolean[][] matrix, boolean[][] checked, boolean ones) {
+        boolean allChecked = true;
+        List<Integer> implicant = new ArrayList<>();
+        boolean[][] localChecked = new boolean[checked.length][checked[0].length];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Pair<Integer, Integer> coordinates = getMatrixValueOverlap(x + xOffset, y + yOffset, matrix);
+                int actualX = coordinates.getKey();
+                int actualY = coordinates.getValue();
+                allChecked = allChecked & checked[actualY][actualX];
+            }
+        }
+
+        if (allChecked)
+            return Optional.empty();
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Pair<Integer, Integer> coordinates = getMatrixValueOverlap(x + xOffset, y + yOffset, matrix);
+                int actualX = coordinates.getKey();
+                int actualY = coordinates.getValue();
+                if ((matrix[actualY][actualX] != ones)) {
+                    return Optional.empty();
+                }
+                if (!localChecked[actualY][actualX])
+                    implicant.add(grayMatrix()[actualY][actualX]);
+                localChecked[actualY][actualX] = true;
+            }
+        }
+
+        for (int y = 0; y < localChecked.length; y++) {
+            for (int x = 0; x < localChecked[0].length; x++) {
+                checked[y][x] |= localChecked[y][x];
+            }
+        }
+        return Optional.of(implicant);
+    }
+
     public String getKMapString() {
         buildKMap();
 
         final int rows = bufferedKMap.size();
         final int cols = bufferedKMap.get(0).size();
-        final int size = getWidth() - 1;
 
         String[] rowHead = new String[rows];
         String[] colHead = new String[cols];
