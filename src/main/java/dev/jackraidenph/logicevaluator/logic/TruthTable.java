@@ -4,6 +4,8 @@ import dev.jackraidenph.logicevaluator.utility.ProcessingSequence;
 import javafx.util.Pair;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -680,14 +682,14 @@ public class TruthTable {
                 }
             }
         }
+
+        BiFunction<List<List<Integer>>, List<Integer>, List<List<Integer>>> listWithoutEntry =
+                (list, entry) -> list.stream().filter(val -> !val.equals(entry)).toList();
+        BiFunction<List<List<Integer>>, List<Integer>, Boolean> hasUnique = (searchIn, list) -> list.stream()
+                .anyMatch(i -> uniqueCoverage(i, listWithoutEntry.apply(searchIn, list)));
         List<List<Integer>> filtered = result
                 .stream()
-                .filter(impl -> impl
-                        .stream()
-                        .anyMatch(i -> uniqueCoverage(i, result
-                                .stream()
-                                .filter(val -> !val.equals(impl))
-                                .toList())))
+                .filter(impl -> hasUnique.apply(result, impl))
                 .toList();
 
         return filtered;
