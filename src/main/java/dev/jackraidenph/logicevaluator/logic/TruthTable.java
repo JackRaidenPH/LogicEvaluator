@@ -658,9 +658,20 @@ public class TruthTable {
         boolean[][] checked = new boolean[rows][cols];
         final int maxRect = (int) Math.floor(Math.log(Math.max(rows, cols)) / Math.log(2));
         for (int i = 0; i < rows; i++) {
-            for (int yLevels = maxRect; yLevels >= 0; yLevels--) {
+            for (int j = 0; j < cols; j++) {
+                for (int squareSize = maxRect; squareSize > 0; squareSize--) {
+                    int square = (int) Math.pow(2, squareSize);
+                    checkMatrixSegment(square, square, i, j, matrixKMap, checked, ones)
+                            .ifPresent(result::add);
+                }
+            }
+        }
+        for (int i = 0; i < rows; i++) {
+            for (int xLevels = maxRect; xLevels >= 0; xLevels--) {
                 for (int j = 0; j < cols; j++) {
-                    for (int xLevels = maxRect; xLevels >= 0; xLevels--) {
+                    for (int yLevels = maxRect; yLevels >= 0; yLevels--) {
+                        if ((xLevels == yLevels) && yLevels != 0)
+                            continue;
                         int rectX = (int) Math.pow(2, xLevels);
                         int rectY = (int) Math.pow(2, yLevels);
                         checkMatrixSegment(rectX, rectY, i, j, matrixKMap, checked, ones)
