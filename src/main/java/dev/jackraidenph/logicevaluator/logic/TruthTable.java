@@ -5,7 +5,6 @@ import javafx.util.Pair;
 
 import java.util.*;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
@@ -20,9 +19,10 @@ public class TruthTable {
     private final List<List<String>>/*                       */bufferedCalculativeFCNF = new ArrayList<>();
     private final List<List<String>>/*                       */bufferedQMCCFDNF = new ArrayList<>();
     private final List<List<String>>/*                       */bufferedQMCCFCNF = new ArrayList<>();
-    private final List<List<String>>/*                       */bufferedKMap = new ArrayList<>();
-    private final List<Integer>/*                            */bufferedGrayRow = new ArrayList<>();
-    private final List<Integer>/*                            */bufferedGrayCol = new ArrayList<>();
+    private final boolean[][]/*                              */bufferedKMap;
+    private boolean/*                                        */kMapBuilt = false;
+    private final int[]/*                                    */bufferedGrayRow;
+    private final int[]/*                                    */bufferedGrayCol;
 
     private final StringBuilder/*                            */bufferedExpression = new StringBuilder();
     private final StringBuilder/*                            */bufferedStringPDNF = new StringBuilder();
@@ -51,8 +51,9 @@ public class TruthTable {
         }
 
         final int size = getWidth() - 1;
-        bufferedGrayRow.addAll(grayCode(size / 2));
-        bufferedGrayCol.addAll(grayCode(size - size / 2));
+        bufferedGrayRow = grayCode(size / 2);
+        bufferedGrayCol = grayCode(size - size / 2);
+        bufferedKMap = new boolean[bufferedGrayRow.length][bufferedGrayCol.length];
     }
 
     public List<String> getOperands() {
@@ -296,9 +297,9 @@ public class TruthTable {
 
         if (buffer.isEmpty()) {
             if (SCNF) {
-                getPCNFPrimes();
+                buildPCNFPrimes();
             } else {
-                getPDNFPrimes();
+                buildPDNFPrimes();
             }
         }
 
@@ -326,12 +327,12 @@ public class TruthTable {
         return bufferedString.toString();
     }
 
-    private List<Pair<List<String>, List<Integer>>> getPDNFPrimes() {
-        return getFormPrimes(false);
+    private void buildPDNFPrimes() {
+        buildFormPrimes(false);
     }
 
-    private List<Pair<List<String>, List<Integer>>> getPCNFPrimes() {
-        return getFormPrimes(true);
+    private void buildPCNFPrimes() {
+        buildFormPrimes(true);
     }
 
     private List<Pair<List<String>, List<Integer>>> withMatchInfo(List<List<String>> implicant) {
@@ -348,12 +349,12 @@ public class TruthTable {
                 .toList();
     }
 
-    private List<Pair<List<String>, List<Integer>>> getFormPrimes(boolean PCNF) {
+    private void buildFormPrimes(boolean PCNF) {
         List<List<String>> buffer = PCNF ? bufferedPCNF : bufferedPDNF;
         List<Pair<List<String>, List<Integer>>> primeBuffer = PCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
 
         if (!primeBuffer.isEmpty())
-            return primeBuffer;
+            return;
 
         if (buffer.isEmpty()) {
             if (PCNF) {
@@ -366,7 +367,6 @@ public class TruthTable {
         List<Pair<List<String>, List<Integer>>> converted = withMatchInfo(buffer);
         primeBuffer.addAll(getPrimeImplicants(converted, new ArrayList<>()));
 
-        return primeBuffer;
     }
 
     private int constituentToInt(List<String> consistent) {
@@ -588,8 +588,8 @@ public class TruthTable {
         return result.toString();
     }
 
-    public List<List<String>> buildKMap() {
-        if (!bufferedKMap.isEmpty()) {
+    public boolean[][] buildKMap() {
+        if (kMapBuilt) {
             return bufferedKMap;
         }
 
@@ -598,49 +598,24 @@ public class TruthTable {
         int rows = (1 << (size >> 1)); //Basically gets rid of the first bit
         int cols = (1 << size) / rows; //Somehow not the same as (2 * size) / rows
 
-        String[][] result = new String[rows][cols];
-
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                result[bufferedGrayRow.get(i)][bufferedGrayCol.get(j)] =
-                        contents.get(j * rows + i).get(size) ? "1" : "0";
+                bufferedKMap[bufferedGrayRow[i]][bufferedGrayCol[j]] =
+                        contents.get(j * rows + i).get(size);
             }
         }
 
-        bufferedKMap.addAll(
-                Arrays.stream(result)
-                        .map(Arrays::asList)
-                        .toList()
-        );
-
+        kMapBuilt = true;
         return bufferedKMap;
     }
 
-    private boolean[][] kMapToMatrix() {
-        buildKMap();
-
-        boolean[][] matrix = new boolean[bufferedKMap.size()][bufferedKMap.get(0).size()];
-
-        for (ListIterator<List<String>> rowIter = bufferedKMap.listIterator(); rowIter.hasNext(); ) {
-            final int rowIndex = rowIter.nextIndex();
-            List<String> row = rowIter.next();
-            for (ListIterator<String> colIter = row.listIterator(); colIter.hasNext(); ) {
-                final int colIndex = colIter.nextIndex();
-                String value = colIter.next();
-                matrix[rowIndex][colIndex] = value.equals("1");
-            }
-        }
-
-        return matrix;
-    }
-
     private int[][] grayMatrix() {
-        int[][] matrix = new int[bufferedGrayRow.size()][bufferedGrayCol.size()];
+        int[][] matrix = new int[bufferedGrayRow.length][bufferedGrayCol.length];
 
-        for (int x = 0; x < bufferedGrayCol.size(); x++) {
-            for (int y = 0; y < bufferedGrayRow.size(); y++) {
-                matrix[y][x] = bufferedGrayCol.get(x) * bufferedGrayRow.size()
-                        + bufferedGrayRow.get(y);
+        for (int x = 0; x < bufferedGrayCol.length; x++) {
+            for (int y = 0; y < bufferedGrayRow.length; y++) {
+                matrix[y][x] = bufferedGrayCol[x] * bufferedGrayRow.length
+                        + bufferedGrayRow[y];
             }
         }
 
@@ -652,10 +627,10 @@ public class TruthTable {
     }
 
     public List<List<Integer>> traverseKMap(boolean ones) {
-        boolean[][] matrixKMap = kMapToMatrix();
+        boolean[][] matrixKMap = buildKMap();
 
-        final int rows = bufferedKMap.size();
-        final int cols = bufferedKMap.get(0).size();
+        final int rows = bufferedGrayRow.length;
+        final int cols = bufferedGrayCol.length;
         List<List<Integer>> result = new ArrayList<>();
         boolean[][] checked = new boolean[rows][cols];
         final int maxRect = (int) Math.floor(Math.log(Math.max(rows, cols)) / Math.log(2));
@@ -687,12 +662,11 @@ public class TruthTable {
                 (list, entry) -> list.stream().filter(val -> !val.equals(entry)).toList();
         BiFunction<List<List<Integer>>, List<Integer>, Boolean> hasUnique = (searchIn, list) -> list.stream()
                 .anyMatch(i -> uniqueCoverage(i, listWithoutEntry.apply(searchIn, list)));
-        List<List<Integer>> filtered = result
+
+        return result
                 .stream()
                 .filter(impl -> hasUnique.apply(result, impl))
                 .toList();
-
-        return filtered;
     }
 
     private List<String> primesFromMatrix(List<Integer> numeric, boolean ones) {
@@ -764,18 +738,19 @@ public class TruthTable {
         return Optional.of(implicant);
     }
 
+    @SuppressWarnings("unused")
     public String getKMapString() {
         buildKMap();
 
-        final int rows = bufferedKMap.size();
-        final int cols = bufferedKMap.get(0).size();
+        final int rows = bufferedGrayRow.length;
+        final int cols = bufferedGrayCol.length;
 
         String[] rowHead = new String[rows];
         String[] colHead = new String[cols];
         for (int i = 0; i < rows; i++)
-            rowHead[i] = Integer.toBinaryString(bufferedGrayRow.get(i));
+            rowHead[i] = Integer.toBinaryString(bufferedGrayRow[i]);
         for (int i = 0; i < cols; i++)
-            colHead[i] = Integer.toBinaryString(bufferedGrayCol.get(i));
+            colHead[i] = Integer.toBinaryString(bufferedGrayCol[i]);
 
         StringBuilder result = new StringBuilder();
 
@@ -788,17 +763,17 @@ public class TruthTable {
         for (int i = 0; i < rows; i++) {
             result.append(String.format("%8s", rowHead[i]));
             for (int j = 0; j < cols; j++) {
-                result.append(String.format("%8s", bufferedKMap.get(i).get(j)));
+                result.append(String.format("%8s", bufferedKMap[i][j]));
             }
             result.append("\n");
         }
         return result.toString();
     }
 
-    private List<Integer> grayCode(int size) {
-        List<Integer> result = new ArrayList<>();
+    private int[] grayCode(int size) {
+        int[] result = new int[size * 2];
         for (int i = 0; i < size * 2; i++) {
-            result.add(i ^ (i / 2));
+            result[i] = i ^ (i / 2);
         }
         return result;
     }
