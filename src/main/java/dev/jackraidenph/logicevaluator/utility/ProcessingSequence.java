@@ -39,15 +39,13 @@ public class ProcessingSequence {
 
         Deque<String> resultStack = new ArrayDeque<>();
         for (String token : valuesQueue) {
-            if (!((token.length() == 1) && ParsingUtils.OPERATORS.contains(token))) {
+            if (!ParsingUtils.OPERATORS.contains(token)) {
                 resultStack.addFirst(token);
             } else {
                 Operation operation = ParsingUtils.STR_TO_OP.get(token);
 
                 Boolean left = Boolean.parseBoolean(resultStack.removeFirst());
-                Boolean right = !operation.isUnary()
-                        ? Boolean.parseBoolean(resultStack.removeFirst())
-                        : null;
+                Boolean right = !operation.isUnary() && Boolean.parseBoolean(resultStack.removeFirst());
 
                 Object result = operation.apply(left, right);
 

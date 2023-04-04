@@ -10,13 +10,14 @@ public class ParsingUtils {
         put("*", Operation.AND);
         put("+", Operation.OR);
         put("^", Operation.XOR);
+        put("->", Operation.IMPL);
         put("(", Operation.OPEN);
         put(")", Operation.CLOSE);
     }};
 
     public static final String OPERATORS = String.join("", STR_TO_OP.keySet());
 
-    public static final Pattern TOKEN_PATTERN = Pattern.compile("(!?[A-z]+)|[/*+!^()]");
+    public static final Pattern TOKEN_PATTERN = Pattern.compile("(!?[A-z]+)|[/*+!^()]|->");
 
     public static List<String> infixToPostfix(String toConvert) {
         Matcher tokenMatcher = TOKEN_PATTERN.matcher(toConvert);
@@ -26,7 +27,7 @@ public class ParsingUtils {
         while (!toConvert.isEmpty()) {
             if (tokenMatcher.find()) {
                 String token = tokenMatcher.group();
-                if ((token.length() == 1) && OPERATORS.contains(token)) {
+                if (OPERATORS.contains(token)) {
                     if (stack.isEmpty())
                         stack.addFirst(token);
                     else if (token.equals(")")) {

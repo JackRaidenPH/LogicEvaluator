@@ -7,6 +7,7 @@ public enum Operation {
     AND(false, 3, (f, s) -> f && s),
     OR(false, 2, (f, s) -> f || s),
     XOR(false, 2, (f, s) -> f ^ s),
+    IMPL(false, 1, (f, s) -> f || !s),
     OPEN(true, -1, null),
     CLOSE(true, -1, null);
 
@@ -19,12 +20,15 @@ public enum Operation {
     }
 
     public boolean apply(Boolean first, Boolean second) {
+        if (function == null)
+            return false;
         return function.apply(first, second);
     }
 
     public final boolean unary;
     public final int precedence;
     public final BiFunction<Boolean, Boolean, Boolean> function;
+
     Operation(boolean unary, int precedence, BiFunction<Boolean, Boolean, Boolean> function) {
         this.unary = unary;
         this.precedence = precedence;
