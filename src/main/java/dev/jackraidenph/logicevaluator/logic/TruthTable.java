@@ -25,15 +25,7 @@ public class TruthTable {
     private final int[]/*                                    */bufferedGrayCol;
 
     private final StringBuilder/*                            */bufferedExpression = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringPDNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringPCNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedNumericStringPDNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedNumericStringPCNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringIndex = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringSDNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringSCNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringCalculativeFDNF = new StringBuilder();
-    private final StringBuilder/*                            */bufferedStringCalculativeFCNF = new StringBuilder();
+
 
     private static final Pattern OPERAND_PATTERN = Pattern.compile("(!?[A-z]+)");
 
@@ -104,10 +96,6 @@ public class TruthTable {
     public String getPrincipal(boolean PCNF) {
         List<List<String>> buffer = PCNF ? bufferedPCNF : bufferedPDNF;
         List<List<String>> localBuffer = new ArrayList<>();
-        StringBuilder bufferedString = PCNF ? bufferedStringPCNF : bufferedStringPDNF;
-
-        if (!bufferedString.isEmpty())
-            return bufferedString.toString();
 
         StringBuilder result = new StringBuilder();
 
@@ -131,9 +119,7 @@ public class TruthTable {
             buffer.addAll(localBuffer);
         }
 
-        bufferedString.append(result);
-
-        return bufferedString.toString();
+        return result.toString();
     }
 
     public String getPDNF() {
@@ -145,11 +131,6 @@ public class TruthTable {
     }
 
     public String getNumeric(boolean PCNF) {
-        StringBuilder bufferedString = PCNF ? bufferedNumericStringPCNF : bufferedNumericStringPDNF;
-
-        if (!bufferedString.isEmpty())
-            return bufferedString.toString();
-
         StringBuilder result = new StringBuilder();
 
         Iterator<List<Boolean>> iterator = contents.iterator();
@@ -163,9 +144,8 @@ public class TruthTable {
         }
 
         result.insert(0, PCNF ? "*(" : "+(").append(")");
-        bufferedString.append(result);
 
-        return bufferedString.toString();
+        return result.toString();
     }
 
     public String getNumericPDNF() {
@@ -203,9 +183,6 @@ public class TruthTable {
     }
 
     public String getIndexForm() {
-        if (!bufferedStringIndex.isEmpty())
-            return bufferedStringIndex.toString();
-
         StringBuilder result = new StringBuilder();
 
         StringBuilder indexStringRepresentation = new StringBuilder();
@@ -217,9 +194,7 @@ public class TruthTable {
 
         result.insert(0, "f(" + (getWidth() - 1)).append(")").append(indexOfFunction);
 
-        bufferedStringIndex.append(result);
-
-        return bufferedStringIndex.toString();
+        return result.toString();
     }
 
     private boolean isPrime(List<String> implicant, List<List<String>> allImplicants) {
@@ -290,10 +265,6 @@ public class TruthTable {
 
     public String getShortenedForm(boolean SCNF) {
         List<Pair<List<String>, List<Integer>>> buffer = SCNF ? bufferedPCNFPrimes : bufferedPDNFPrimes;
-        StringBuilder bufferedString = SCNF ? bufferedStringSCNF : bufferedStringSDNF;
-
-        if (!bufferedString.isEmpty())
-            return bufferedString.toString();
 
         if (buffer.isEmpty()) {
             if (SCNF) {
@@ -322,9 +293,7 @@ public class TruthTable {
             }
         }
 
-        bufferedString.append(result);
-
-        return bufferedString.toString();
+        return result.toString();
     }
 
     private void buildPDNFPrimes() {
@@ -442,10 +411,6 @@ public class TruthTable {
     }
 
     private String getCalculativeReduction(boolean FCNF) {
-        StringBuilder resultBuffer = FCNF ? bufferedStringCalculativeFCNF : bufferedStringCalculativeFDNF;
-        if (!resultBuffer.isEmpty())
-            return resultBuffer.toString();
-
         List<List<String>> reduced = calculativeReduction(FCNF);
 
         StringBuilder result = new StringBuilder();
@@ -466,9 +431,7 @@ public class TruthTable {
             result.append(constituent);
         }
 
-        resultBuffer.append(result);
-
-        return resultBuffer.toString();
+        return result.toString();
     }
 
     private List<List<String>> calculativeReduction(boolean FCNF) {
@@ -547,7 +510,8 @@ public class TruthTable {
     private List<List<String>> implicantMatrixFromNumeric(List<Integer> numeric, boolean flip) {
         return numeric
                 .stream()
-                .map(val -> String.format("%" + countOperands() + "s", Integer.toBinaryString(val)).replaceAll(" ", "0"))
+                .map(val -> String.format("%" + countOperands() + "s", Integer.toBinaryString(val))
+                        .replaceAll(" ", "0"))
                 .map(str -> {
                     List<String> result = new ArrayList<>();
                     for (int i = 0; i < str.length(); i++) {
