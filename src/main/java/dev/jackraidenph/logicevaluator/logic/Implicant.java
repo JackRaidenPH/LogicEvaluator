@@ -48,4 +48,16 @@ public class Implicant extends HashSet<Integer> {
         }
         return prime;
     }
+
+    public boolean isEssential(List<Implicant> set) {
+        for (Integer term : this) {
+            boolean unique = true;
+            for (Implicant impl : set) {
+                unique = unique && !(impl.contains(term) && !impl.equals(this));
+            }
+            if (unique)
+                return true;
+        }
+        return false;
+    }
 }

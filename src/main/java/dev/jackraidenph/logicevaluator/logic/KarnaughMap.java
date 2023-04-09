@@ -2,9 +2,7 @@ package dev.jackraidenph.logicevaluator.logic;
 
 import javafx.util.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.BiFunction;
 
 public class KarnaughMap {
@@ -57,43 +55,43 @@ public class KarnaughMap {
         boolean[][] checked = new boolean[rows][cols];
         final int maxRect = (int) Math.floor(Math.log(Math.max(rows, cols)) / Math.log(2));
 
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                for (int squareSize = maxRect; squareSize > 0; squareSize--) {
-                    int square = (int) Math.pow(2, squareSize);
-                    checkMatrixSegment(square, square, i, j, matrix, checked, ones)
-                            .ifPresent(result::add);
-                }
-            }
-        }
-        for (int i = 0; i < rows; i++) {
-            for (int xLevels = maxRect; xLevels >= 0; xLevels--) {
-                for (int j = 0; j < cols; j++) {
-                    for (int yLevels = maxRect; yLevels >= 0; yLevels--) {
-                        if ((xLevels == yLevels) && yLevels != 0)
-                            continue;
-                        int rectX = (int) Math.pow(2, xLevels);
-                        int rectY = (int) Math.pow(2, yLevels);
-                        checkMatrixSegment(rectX, rectY, i, j, matrix, checked, ones)
-                                .ifPresent(result::add);
-                    }
-                }
+        List<Pair<Integer, Integer>> areas = new ArrayList<>();
+        for (int xLevels = maxRect; xLevels >= 0; xLevels--) {
+            for (int yLevels = maxRect; yLevels >= 0; yLevels--) {
+                int rectX = (int) Math.pow(2, xLevels);
+                int rectY = (int) Math.pow(2, yLevels);
+                areas.add(new Pair<>(rectX, rectY));
             }
         }
 
-        BiFunction<List<Implicant>, Implicant, List<Implicant>> listWithoutEntry =
-                (list, entry) -> list.stream().filter(val -> !val.equals(entry)).toList();
-        BiFunction<List<Implicant>, Implicant, Boolean> hasUnique = (searchIn, list) -> list.stream()
-                .anyMatch(i -> TruthTable.uniqueCoverage(i, listWithoutEntry.apply(searchIn, list)));
+        areas.sort(Comparator.comparing((Pair<Integer, Integer> p) -> {
+            int max = Math.max(p.getKey(), p.getValue());
+            int min = Math.min(p.getKey(), p.getValue());
+            double distance = Math.sqrt(min * min + max * max);
+            return (max * min) / distance;
+        }).reversed());
+
+        segmentIteration:
+        for (Pair<Integer, Integer> dimensions : areas) {
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    checkMatrixSegment(dimensions.getKey(), dimensions.getValue(), i, j, matrix, checked, ones)
+                            .ifPresent(result::add);
+                    if (Arrays.deepEquals(checked, matrix))
+                        break segmentIteration;
+                }
+            }
+        }
 
         return result
                 .stream()
-                .filter(impl -> hasUnique.apply(result, impl))
+                .distinct()
+                .filter(impl -> impl.isEssential(result))
                 .toList();
     }
 
     private Optional<Implicant> checkMatrixSegment(int width, int height, int yOffset, int xOffset,
-                                                       boolean[][] matrix, boolean[][] checked, boolean ones) {
+                                                   boolean[][] matrix, boolean[][] checked, boolean ones) {
         boolean allChecked = true;
         Implicant implicant = new Implicant();
         boolean[][] localChecked = new boolean[checked.length][checked[0].length];

@@ -325,6 +325,7 @@ public class TruthTable {
             return primes
                     .stream()
                     .map(pair -> new Pair<>(pair.getKey().clearDashes(), pair.getValue()))
+                    .distinct()
                     .toList();
         }
     }
