@@ -1,5 +1,6 @@
 package dev.jackraidenph.logicevaluator;
 
+import dev.jackraidenph.logicevaluator.logic.KarnaughMap;
 import dev.jackraidenph.logicevaluator.logic.TruthTable;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.event.ActionEvent;
@@ -101,8 +102,9 @@ public class Controller {
         cfcnfRes.setText("Calculated FCNF form: " + truthTable.getCalculativeFCNF());
         qmccfdnfRes.setText("Quine-McCluskey FDNF form: " + truthTable.getQuineMcCluskeyFDNF());
         qmccfcnfRes.setText("Quine-McCluskey FCNF form: " + truthTable.getQuineMcCluskeyFCNF());
-        kmapFDNFRes.setText("Karnaugh Map FDNF: " + truthTable.getKMapFDNF());
-        kmapFCNFRes.setText("Karnaugh Map FCNF: " + truthTable.getKMapFCNF());
+        KarnaughMap kmap = new KarnaughMap(truthTable);
+        kmapFDNFRes.setText("Karnaugh Map FDNF: " + kmap.getKMapFDNF());
+        kmapFCNFRes.setText("Karnaugh Map FCNF: " + kmap.getKMapFCNF());
     }
 
     private void customiseFactory(TableColumn<List<Boolean>, String> column) {
