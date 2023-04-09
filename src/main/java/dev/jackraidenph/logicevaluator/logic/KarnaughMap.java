@@ -27,8 +27,8 @@ public class KarnaughMap {
 
         grayMatrix = new int[grayRowLength][grayColLength];
 
-        for (int y = 0; y < grayColLength; y++) {
-            for (int x = 0; x < grayRowLength; x++) {
+        for (int y = 0; y < grayRowLength; y++) {
+            for (int x = 0; x < grayColLength; x++) {
                 grayMatrix[y][x] = (x ^ (x / 2)) * grayRowLength
                         + y ^ (y / 2);
             }
@@ -49,13 +49,14 @@ public class KarnaughMap {
         return new Pair<>(x % matrix[0].length, y % matrix.length);
     }
 
-    public List<List<Integer>> traverseKMap(boolean ones) {
+    public List<Implicant> traverseKMap(boolean ones) {
 
         final int rows = grayMatrix.length;
         final int cols = grayMatrix[0].length;
-        List<List<Integer>> result = new ArrayList<>();
+        List<Implicant> result = new ArrayList<>();
         boolean[][] checked = new boolean[rows][cols];
         final int maxRect = (int) Math.floor(Math.log(Math.max(rows, cols)) / Math.log(2));
+
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 for (int squareSize = maxRect; squareSize > 0; squareSize--) {
@@ -80,9 +81,9 @@ public class KarnaughMap {
             }
         }
 
-        BiFunction<List<List<Integer>>, List<Integer>, List<List<Integer>>> listWithoutEntry =
+        BiFunction<List<Implicant>, Implicant, List<Implicant>> listWithoutEntry =
                 (list, entry) -> list.stream().filter(val -> !val.equals(entry)).toList();
-        BiFunction<List<List<Integer>>, List<Integer>, Boolean> hasUnique = (searchIn, list) -> list.stream()
+        BiFunction<List<Implicant>, Implicant, Boolean> hasUnique = (searchIn, list) -> list.stream()
                 .anyMatch(i -> TruthTable.uniqueCoverage(i, listWithoutEntry.apply(searchIn, list)));
 
         return result
@@ -91,10 +92,10 @@ public class KarnaughMap {
                 .toList();
     }
 
-    private Optional<List<Integer>> checkMatrixSegment(int width, int height, int yOffset, int xOffset,
+    private Optional<Implicant> checkMatrixSegment(int width, int height, int yOffset, int xOffset,
                                                        boolean[][] matrix, boolean[][] checked, boolean ones) {
         boolean allChecked = true;
-        List<Integer> implicant = new ArrayList<>();
+        Implicant implicant = new Implicant();
         boolean[][] localChecked = new boolean[checked.length][checked[0].length];
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
@@ -139,25 +140,11 @@ public class KarnaughMap {
     }
 
     private String getKMapReduction(boolean FCNF) {
-        List<List<String>> result = new ArrayList<>();
-        for (List<Integer> numerics : traverseKMap(!FCNF)) {
-            result.add(primesFromMatrix(numerics, !FCNF));
+        List<Term> result = new ArrayList<>();
+        for (Implicant numerics : traverseKMap(!FCNF)) {
+            result.add(numerics.reducedTerm(operands, !FCNF));
         }
         return TruthTable.constructFromList(FCNF, result);
-    }
-
-    private List<String> primesFromMatrix(List<Integer> numeric, boolean ones) {
-        List<List<String>> implicants = TruthTable.implicantMatrixFromNumeric(numeric, operands, ones);
-        List<String> prime = new ArrayList<>();
-        for (String operand : operands) {
-            if (implicants.stream().allMatch(impl -> impl.contains(operand))) {
-                prime.add(operand);
-            }
-            if (implicants.stream().allMatch(impl -> impl.contains("!" + operand))) {
-                prime.add("!" + operand);
-            }
-        }
-        return prime;
     }
 
     @Override

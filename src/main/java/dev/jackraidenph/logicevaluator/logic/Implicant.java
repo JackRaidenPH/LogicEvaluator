@@ -7,8 +7,15 @@ import java.util.List;
 
 public class Implicant extends HashSet<Integer> {
 
-    public Implicant(Term... terms) {
-        addAll(Arrays.stream(terms).map(Term::toInteger).toList());
+    public Implicant() {
+    }
+
+    public Implicant(Integer... terms) {
+        addAll(Arrays.stream(terms).distinct().toList());
+    }
+
+    public Implicant(Implicant copy) {
+        addAll(new ArrayList<>(copy));
     }
 
     public List<Term> toTerms(List<String> literals, boolean positive) {
@@ -16,9 +23,10 @@ public class Implicant extends HashSet<Integer> {
 
         for (Integer t : this) {
             Term term = new Term();
-            for (int i = 0; i < literals.size(); i++) {
+            final int lSize = literals.size();
+            for (int i = 0; i < lSize; i++) {
                 term.add(Term.matchBoolean(
-                                literals.get(i), ((1 & (t >> i)) == 1) == positive
+                                literals.get(i), ((1 & (t >> (lSize - 1 - i))) == 1) == positive
                         )
                 );
             }
@@ -34,8 +42,8 @@ public class Implicant extends HashSet<Integer> {
         for (String l : literals) {
             if (implicants.stream().allMatch(impl -> impl.contains(l))) {
                 prime.add(l);
-            } else if (implicants.stream().allMatch(impl -> impl.contains(Term.negate(l)))) {
-                prime.add(Term.negate(l));
+            } else if (implicants.stream().allMatch(impl -> impl.contains(Term.negateLiteral(l)))) {
+                prime.add(Term.negateLiteral(l));
             }
         }
         return prime;
