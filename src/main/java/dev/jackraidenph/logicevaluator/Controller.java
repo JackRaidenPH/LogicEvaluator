@@ -5,6 +5,7 @@ import dev.jackraidenph.logicevaluator.logic.TruthTable;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.Background;
@@ -15,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
-public class Controller {
+public class Controller implements Initializable {
 
     @FXML
     private Button evaluateButton;
@@ -58,6 +59,9 @@ public class Controller {
 
     @FXML
     private Label kmapFCNFRes;
+
+    @FXML
+    private ChoiceBox<String> presetDroplist;
 
     @FXML
     private TableView<List<Boolean>> truthTableView;
@@ -130,5 +134,17 @@ public class Controller {
                 }
             }
         });
+    }
+
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        presetDroplist.setValue("None");
+        presetDroplist.getItems().add("None");
+        presetDroplist.setOnAction(this::onPresetChoice);
+    }
+
+    @FXML
+    private void onPresetChoice(ActionEvent event) {
+
     }
 }
