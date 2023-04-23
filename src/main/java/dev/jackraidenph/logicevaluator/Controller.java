@@ -10,7 +10,10 @@ import javafx.scene.control.*;
 import javafx.scene.layout.Background;
 import javafx.scene.paint.Color;
 
-import java.util.*;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ResourceBundle;
 
 public class Controller {
 
@@ -71,12 +74,18 @@ public class Controller {
         truthTableView.getColumns().clear();
 
         TruthTable truthTable = new TruthTable(inputField.getText());
+
+        List<String> names = new ArrayList<>(truthTable.getOperands());
+        names.add(inputField.getText());
+        setColumns(truthTable, names);
+        setOutputs(truthTable);
+    }
+
+    private void setColumns(TruthTable truthTable, List<String> names) {
         int truthTableWidth = truthTable.getWidth();
 
         for (int columnId = 0; columnId < truthTableWidth; columnId++) {
-            String name = columnId < truthTableWidth - 1
-                    ? truthTable.getOperands().get(columnId)
-                    : inputField.getText();
+            String name = names.get(columnId);
             TableColumn<List<Boolean>, String> column = new TableColumn<>(name);
             column.setSortable(false);
             int finalCID = columnId;
@@ -90,7 +99,9 @@ public class Controller {
         for (List<Boolean> row : truthTable.getContents()) {
             truthTableView.getItems().add(row);
         }
+    }
 
+    private void setOutputs(TruthTable truthTable) {
         pdnfRes.setText("PDNF: " + truthTable.getPDNF());
         pcnfRes.setText("PCNF: " + truthTable.getPCNF());
         numericPDNFRes.setText("Numeric PDNF: " + truthTable.getNumericPDNF());

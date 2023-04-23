@@ -8,7 +8,6 @@ import javafx.scene.input.Clipboard;
 import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.MouseEvent;
 import javafx.stage.Stage;
-import javafx.util.Pair;
 
 import java.io.IOException;
 
@@ -24,7 +23,9 @@ public class Main extends javafx.application.Application {
             Node node = event.getPickResult().getIntersectedNode();
             if (node.getParent() instanceof Label text) {
                 ClipboardContent content = new ClipboardContent();
-                content.putString(text.getText().split(":")[1].trim());
+                if(text.getText().split(":").length > 1) {
+                    content.putString(text.getText().split(":")[1].trim());
+                }
                 Clipboard.getSystemClipboard().setContent(content);
             }
         });
