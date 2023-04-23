@@ -21,7 +21,7 @@ public class TruthTable {
     private final String/*                                   */bufferedExpression;
 
 
-    private static final Pattern OPERAND_PATTERN = Pattern.compile("(!?[A-z]+)");
+    private static final Pattern OPERAND_PATTERN = Pattern.compile("(!?[A-Za-z]+)");
 
     public TruthTable(String expression) {
         bufferedExpression = expression;

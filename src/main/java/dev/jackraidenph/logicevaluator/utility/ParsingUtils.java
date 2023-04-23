@@ -17,7 +17,7 @@ public class ParsingUtils {
 
     public static final String OPERATORS = String.join("", STR_TO_OP.keySet());
 
-    public static final Pattern TOKEN_PATTERN = Pattern.compile("(!?[A-z]+)|[/*+!^()]|->");
+    public static final Pattern TOKEN_PATTERN = Pattern.compile("(!?[A-Za-z]+)|[*+!^()]|(->)");
 
     public static List<String> infixToPostfix(String toConvert) {
         Matcher tokenMatcher = TOKEN_PATTERN.matcher(toConvert);
