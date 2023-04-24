@@ -37,6 +37,18 @@ public class TruthTable {
         }
     }
 
+    public TruthTable(List<String> operands, List<List<Boolean>> contents) {
+        bufferedExpression = "";
+
+        int operandsCount = operands.size();
+        bufferedOperands.addAll(operands);
+        this.contents.addAll(contents);
+    }
+
+    public String getExpression() {
+        return bufferedExpression;
+    }
+
     public List<String> getOperands() {
         countOperands();
         return bufferedOperands.stream().toList();

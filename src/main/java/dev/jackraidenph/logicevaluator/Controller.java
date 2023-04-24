@@ -12,9 +12,7 @@ import javafx.scene.layout.Background;
 import javafx.scene.paint.Color;
 
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ResourceBundle;
+import java.util.*;
 
 public class Controller implements Initializable {
 
@@ -85,6 +83,51 @@ public class Controller implements Initializable {
         setOutputs(truthTable);
     }
 
+    private static final Map<String, TruthTable> PRESETS = new HashMap<>() {{
+        put("SUM_VAL", new TruthTable("(A^B)^C"));
+        put("SUM_CARRY", new TruthTable("(A*B)+(C*(A^B))"));
+        put("8421E9O8", new TruthTable(
+                List.of(new String[]{"A", "B", "C", "D"}), new ArrayList<>() {{
+            add(List.of(false, false, false, false, true));
+            add(List.of(false, false, false, true, true));
+            add(List.of(false, false, true, false, true));
+            add(List.of(false, false, true, true, true));
+            add(List.of(false, true, false, false, true));
+            add(List.of(false, true, false, true, true));
+            add(List.of(false, true, true, false, true));
+        }}));
+        put("8421E9O4", new TruthTable(
+                List.of(new String[]{"A", "B", "C", "D"}), new ArrayList<>() {{
+            add(List.of(false, false, false, false, false));
+            add(List.of(false, false, false, true, false));
+            add(List.of(false, false, true, false, false));
+            add(List.of(false, false, true, true, true));
+            add(List.of(false, true, false, false, true));
+            add(List.of(false, true, false, true, true));
+            add(List.of(false, true, true, false, true));
+        }}));
+        put("8421E9O2", new TruthTable(
+                List.of(new String[]{"A", "B", "C", "D"}), new ArrayList<>() {{
+            add(List.of(false, false, false, false, false));
+            add(List.of(false, false, false, true, true));
+            add(List.of(false, false, true, false, true));
+            add(List.of(false, false, true, true, false));
+            add(List.of(false, true, false, false, false));
+            add(List.of(false, true, false, true, true));
+            add(List.of(false, true, true, false, true));
+        }}));
+        put("8421E9O1", new TruthTable(
+                List.of(new String[]{"A", "B", "C", "D"}), new ArrayList<>() {{
+            add(List.of(false, false, false, false, true));
+            add(List.of(false, false, false, true, false));
+            add(List.of(false, false, true, false, true));
+            add(List.of(false, false, true, true, false));
+            add(List.of(false, true, false, false, true));
+            add(List.of(false, true, false, true, false));
+            add(List.of(false, true, true, false, true));
+        }}));
+    }};
+
     private void setColumns(TruthTable truthTable, List<String> names) {
         int truthTableWidth = truthTable.getWidth();
 
@@ -117,9 +160,11 @@ public class Controller implements Initializable {
         cfcnfRes.setText("Calculated FCNF form: " + truthTable.getCalculativeFCNF());
         qmccfdnfRes.setText("Quine-McCluskey FDNF form: " + truthTable.getQuineMcCluskeyFDNF());
         qmccfcnfRes.setText("Quine-McCluskey FCNF form: " + truthTable.getQuineMcCluskeyFCNF());
-        KarnaughMap kmap = new KarnaughMap(truthTable);
-        kmapFDNFRes.setText("Karnaugh Map FDNF: " + kmap.getKMapFDNF());
-        kmapFCNFRes.setText("Karnaugh Map FCNF: " + kmap.getKMapFCNF());
+        try {
+            KarnaughMap kmap = new KarnaughMap(truthTable);
+            kmapFDNFRes.setText("Karnaugh Map FDNF: " + kmap.getKMapFDNF());
+            kmapFCNFRes.setText("Karnaugh Map FCNF: " + kmap.getKMapFCNF());
+        } catch (Exception ignored) {}
     }
 
     private void customiseFactory(TableColumn<List<Boolean>, String> column) {
@@ -140,11 +185,35 @@ public class Controller implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         presetDroplist.setValue("None");
         presetDroplist.getItems().add("None");
+        presetDroplist.getItems().addAll(PRESETS.keySet());
         presetDroplist.setOnAction(this::onPresetChoice);
     }
 
     @FXML
     private void onPresetChoice(ActionEvent event) {
+        truthTableView.getItems().clear();
+        truthTableView.getColumns().clear();
 
+        String choice = presetDroplist.getValue();
+        if (PRESETS.containsKey(choice)) {
+            evaluateButton.setDisable(true);
+            inputField.setDisable(true);
+
+            TruthTable truthTable = PRESETS.get(choice);
+            inputField.setText(truthTable.getExpression());
+
+            List<String> names = new ArrayList<>(truthTable.getOperands());
+            names.add(choice);
+            setColumns(truthTable, names);
+            //try {
+            setOutputs(truthTable);
+            //} catch (ArrayIndexOutOfBoundsException exception) {
+            //System.out.println("Can't construct K-Map for partial Truth Table!");
+            //}
+        } else {
+            evaluateButton.setDisable(false);
+            inputField.setDisable(false);
+            inputField.setText("");
+        }
     }
 }
