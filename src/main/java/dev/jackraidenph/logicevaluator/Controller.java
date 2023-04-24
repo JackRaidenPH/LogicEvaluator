@@ -126,7 +126,71 @@ public class Controller implements Initializable {
             add(List.of(false, true, false, true, false));
             add(List.of(false, true, true, false, true));
         }}));
+        put("16SUBH4", new TruthTable(List.of(new String[]{"q4p", "q3p", "q2p", "q1p", "V"}),
+                makeTable(0)));
+        put("16SUBH3", new TruthTable(List.of(new String[]{"q4p", "q3p", "q2p", "q1p", "V"}),
+                makeTable(1)));
+        put("16SUBH2", new TruthTable(List.of(new String[]{"q4p", "q3p", "q2p", "q1p", "V"}),
+                makeTable(2)));
+        put("16SUBH1", new TruthTable(List.of(new String[]{"q4p", "q3p", "q2p", "q1p", "V"}),
+                makeTable(3)));
     }};
+
+    private static boolean[] decrement(boolean[] subtractFrom) {
+        boolean v1, v2, v3, B = false;
+        boolean[] X = new boolean[4];
+        boolean[] Y = new boolean[4];
+        System.arraycopy(subtractFrom, 0, X, 0, 4);
+        System.arraycopy(new boolean[]{true, false, false, false}, 0, Y, 0, 4);
+        for (int i = 0; i < 4; i++) {
+            v1 = X[i] ^ Y[i];
+            v2 = !X[i] & Y[i];
+            v3 = !v1 & B;
+            X[i] = v1 ^ B;
+            B = v2 | v3;
+        }
+        return X;
+    }
+
+    public static boolean[] magnitudeToBinary(Integer integer) {
+        integer = Math.abs(integer);
+        boolean[] out = new boolean[4];
+        for (int i = 0; i < 4; i++)
+            out[i] = (integer & (1 << i)) != 0;
+        return out;
+    }
+
+    public static List<List<Boolean>> makeTable(int h) {
+        List<List<Boolean>> table = new ArrayList<>();
+        for (int i = 0; i < 16; i++) {
+            for (boolean bool : new boolean[]{false, true}) {
+                List<Boolean> row = new ArrayList<>();
+
+                boolean[] prev = magnitudeToBinary(i);
+                for (boolean qtp : prev) {
+                    row.add(qtp);
+                }
+                Collections.reverse(row);
+
+                row.add(bool);
+
+                for (boolean qtp : (bool ? decrement(prev) : prev)) {
+                    row.add(qtp);
+                }
+                Collections.reverse(row.subList(5, 9));
+
+                row.add((row.get(h) != row.get(h + 5)) && bool);
+
+                row.remove(5);
+                row.remove(5);
+                row.remove(5);
+                row.remove(5);
+
+                table.add(row);
+            }
+        }
+        return table;
+    }
 
     private void setColumns(TruthTable truthTable, List<String> names) {
         int truthTableWidth = truthTable.getWidth();
