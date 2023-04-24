@@ -222,13 +222,13 @@ public class Controller implements Initializable {
         scnfRes.setText("SCNF form: " + truthTable.getSCNF());
         cfdnfRes.setText("Calculated FDNF form: " + truthTable.getCalculativeFDNF());
         cfcnfRes.setText("Calculated FCNF form: " + truthTable.getCalculativeFCNF());
-        qmccfdnfRes.setText("Quine-McCluskey FDNF form: " + truthTable.getQuineMcCluskeyFDNF());
-        qmccfcnfRes.setText("Quine-McCluskey FCNF form: " + truthTable.getQuineMcCluskeyFCNF());
-        try {
+        if (!truthTable.getExpression().isBlank()) {
+            qmccfdnfRes.setText("Quine-McCluskey FDNF form: " + truthTable.getQuineMcCluskeyFDNF());
+            qmccfcnfRes.setText("Quine-McCluskey FCNF form: " + truthTable.getQuineMcCluskeyFCNF());
             KarnaughMap kmap = new KarnaughMap(truthTable);
             kmapFDNFRes.setText("Karnaugh Map FDNF: " + kmap.getKMapFDNF());
             kmapFCNFRes.setText("Karnaugh Map FCNF: " + kmap.getKMapFCNF());
-        } catch (Exception ignored) {}
+        }
     }
 
     private void customiseFactory(TableColumn<List<Boolean>, String> column) {
